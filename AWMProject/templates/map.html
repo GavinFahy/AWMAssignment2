@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load leaflet_tags %}
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.2/dist/leaflet.css"
+     integrity="sha256-sA+zWATbFveLLNqWO2gtiw3HL/lh1giY/Inf1BJ0z14="
+     crossorigin=""/>
+    <style>
+    body {
+    padding: 0;
+    margin: 0;
+    }
+    html, body, #map {
+    height: 100%;
+    width: 100vw;
+    }
+    </style>
+</head>
+<body>
+<script src="https://unpkg.com/leaflet@1.9.2/dist/leaflet.js"
+     integrity="sha256-o9N1jGDZrf5tS+Ft4gbIK7mYMipq9lqpVJ91xHSyKhg="
+     crossorigin="">
+    </script>
+ <div id="map">map</div>
+    <script>
+
+        map = L.map('map', {doubleClickZoom: false}).locate({setView: true, maxZoom: 16});
+
+        function onLocationFound(e) {
+        var radius = e.accuracy;
+
+        L.marker(e.latlng).addTo(map)
+        .bindPopup("You are within " + radius + " meters from this point").openPopup();
+
+        L.circle(e.latlng, radius).addTo(map);
+    }
+
+    map.on('locationfound', onLocationFound);
+
+        function onMapClick(e) {
+        update_db(e.latlng.lng,e.latlng.lat)
+        }
+
+        map.on('click', onMapClick);
+
+        function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        function update_db(pos) {
+        let locString = pos.coords.longitude + ", " + pos.coords.latitude;
+
+            $.ajax({
+            type: "POST",
+            headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+            },
+            url: HOST + "/updatedb/",
+            data: {
+                point: locString
+            }
+            }).done(function (data, status, xhr) {
+                console.log(data["message"])
+                let originalMsg = $(".toast-body").html();
+                $(".toast-body").html(originalMsg + "<br/>Updateddatabase<br/>" + data["message"]);
+
+            }).fail(function (xhr, status, error) {
+                console.log(error);
+                let originalMsg = $(".toast-body").html();
+                $(".toast-body").html(originalMsg + "<br/>" + error);
+            }).always(function () {
+                console.log("find_loc_ed finished");
+                $(".toast").toast('show');
+            });
+        }
+
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
+
+    </script>
+</body>
+</html>
